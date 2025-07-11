@@ -1,16 +1,13 @@
 #pragma once
 #include <algorithm>
 #include <array>
-#include <cassert>
 #include <functional>
 #include <iostream>
 #include <string>
 #include <tuple>
 #include <vector>
 
-namespace std
-{
-std::string to_string(const std::vector<std::string> &in)
+inline std::string to_string(const std::vector<std::string> &in)
 {
     std::string result;
     for (const auto &i : in)
@@ -25,8 +22,7 @@ std::string to_string(const std::vector<std::string> &in)
     return result;
 }
 // Only for numeric types
-template <typename T>
-typename std::enable_if_t<std::is_arithmetic_v<T>, std::string> to_string(const std::vector<T> &in)
+template <typename T> std::enable_if_t<std::is_arithmetic_v<T>, std::string> to_string(const std::vector<T> &in)
 {
     std::string result;
     for (const auto &i : in)
@@ -40,7 +36,6 @@ typename std::enable_if_t<std::is_arithmetic_v<T>, std::string> to_string(const 
 
     return result;
 }
-} // namespace std
 
 template <typename T> struct is_string_type : std::false_type
 {
@@ -92,7 +87,7 @@ template <typename T> constexpr bool is_non_string_container_v = is_non_string_c
 
 inline std::tuple<std::string, std::function<bool(std::string)>> Equals(const char *xIn)
 {
-    return {xIn, [xIn](std::string In) { return xIn == In; }};
+    return {xIn, [xIn](const std::string_view In) { return xIn == In; }};
 }
 
 template <typename T> constexpr inline std::tuple<T, std::function<bool(T)>> Equals(T &&xIn)
@@ -105,6 +100,42 @@ template <typename T> constexpr inline std::tuple<T, std::function<bool(T)>> Equ
     {
         return {xIn, [xIn](auto In) -> bool { return xIn == In; }};
     }
+}
+inline std::tuple<std::string, std::function<bool(std::string)>> NotEquals(const char *xIn)
+{
+    return {xIn, [xIn](const std::string_view In) { return xIn != In; }};
+}
+
+template <typename T> constexpr inline std::tuple<T, std::function<bool(T)>> NotEquals(T &&xIn)
+{
+    if constexpr (is_non_string_container_v<T>)
+    {
+        return {xIn, [xIn](auto In) -> bool { return !std::equal(In.begin(), In.end(), xIn.begin(), xIn.end()); }};
+    }
+    else
+    {
+        return {xIn, [xIn](auto In) -> bool { return xIn != In; }};
+    }
+}
+
+template <typename T> constexpr inline std::tuple<T, std::function<bool(T)>> GreaterEquals(T &&xIn)
+{
+    return {xIn, [xIn](auto In) -> bool { return xIn >= In; }};
+}
+
+template <typename T> constexpr inline std::tuple<T, std::function<bool(T)>> Greater(T &&xIn)
+{
+    return {xIn, [xIn](auto In) -> bool { return xIn > In; }};
+}
+
+template <typename T> constexpr inline std::tuple<T, std::function<bool(T)>> LesserEquals(T &&xIn)
+{
+    return {xIn, [xIn](auto In) -> bool { return xIn <= In; }};
+}
+
+template <typename T> constexpr inline std::tuple<T, std::function<bool(T)>> Lesser(T &&xIn)
+{
+    return {xIn, [xIn](auto In) -> bool { return xIn < In; }};
 }
 
 namespace Assert
@@ -133,23 +164,27 @@ constexpr static inline void That(const T1 &xResult, std::tuple<T2, std::functio
 }
 } // namespace Assert
 
-void printDuration(const std::chrono::steady_clock::time_point &start, const std::chrono::steady_clock::time_point &end)
+inline void printDuration(const std::chrono::steady_clock::time_point &start,
+                          const std::chrono::steady_clock::time_point &end)
 {
-    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
-    if (duration.count() < 1000)
+    if (const auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+        duration.count() < 1000)
     {
         std::cout << "Duration: " << duration.count() << " ns" << std::endl;
     }
     else if (duration.count() >= 1000000000)
     {
-        std::cout << "Duration: " << duration.count() / static_cast<double>(1000000000) << " s" << std::endl;
+        std::cout << "Duration: " << static_cast<double>(duration.count()) / static_cast<double>(1000000000) << " s"
+                  << std::endl;
     }
     else if (duration.count() >= 1000000)
     {
-        std::cout << "Duration: " << duration.count() / static_cast<double>(1000000) << " ms" << std::endl;
+        std::cout << "Duration: " << static_cast<double>(duration.count()) / static_cast<double>(1000000) << " ms"
+                  << std::endl;
     }
     else if (duration.count() >= 1000)
     {
-        std::cout << "Duration: " << duration.count() / static_cast<double>(1000) << " µs" << std::endl;
+        std::cout << "Duration: " << static_cast<double>(duration.count()) / static_cast<double>(1000) << " µs"
+                  << std::endl;
     }
 }
